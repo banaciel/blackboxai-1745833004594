@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Caroline's Flower Journey</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background: linear-gradient(to top, #a8edea, #fed6e3);
+      overflow: hidden;
+      touch-action: manipulation;
+      margin: 0;
+      padding: 0;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #d0f0c0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+    #game-canvas {
+      background: #a2d149;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 480px;
+      height: 640px; /* increased height for portrait */
+      touch-action: none;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-content: flex-start;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .button {
+      background: #f9a8d4;
+      color: white;
+      font-weight: 700;
+      padding: 0.5rem 1.5rem;
+      border-radius: 9999px;
+      box-shadow: 0 4px 6px rgba(249, 168, 212, 0.5);
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+    .button:hover {
+      background: #ec4899;
+    }
+    #main-menu, #quest-message, #credits, #final-surprise {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 1rem;
+      padding: 2rem;
+      max-width: 90vw;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      text-align: center;
+      display: none;
+      z-index: 10;
+    }
+    #main-menu.active, #quest-message.active, #credits.active, #final-surprise.active {
+      display: block;
+    }
+    #caroline {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 64px;
+      height: 80px;
+      background: url('https://cdn-icons-png.flaticon.com/512/2922/2922566.png') no-repeat center/contain;
+      border-radius: 12px;
+      box-shadow: 0 0 10px #ec4899;
+      transition: left 0.2s ease;
+      user-select: none;
+    }
+    .flower, .butterfly, .lilypad, .mushroom, .vine {
+      position: absolute;
+      user-select: none;
+      background-size: contain;
+      background-repeat: no-repeat;
+    }
+    .flower {
+      width: 40px;
+      height: 40px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/616/616489.png');
+    }
+    .butterfly {
+      width: 40px;
+      height: 40px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/616/616489.png');
+    }
+    .lilypad {
+      width: 48px;
+      height: 24px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/616/616489.png');
+    }
+    .mushroom {
+      width: 40px;
+      height: 40px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/616/616489.png');
+    }
+    .vine {
+      width: 24px;
+      height: 80px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/616/616489.png');
+    }
+    #fireworks {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container" class="relative">
+    <div id="game-canvas" tabindex="0" aria-label="Game area">
+      <div id="caroline" role="img" aria-label="Caroline character"></div>
+      <!-- Dynamic game objects will be appended here -->
+      <canvas id="fireworks"></canvas>
+    </div>
+
+    <div id="main-menu" class="active" role="dialog" aria-modal="true" aria-labelledby="main-menu-title">
+      <h1 id="main-menu-title" class="text-3xl font-bold mb-4 text-pink-600">🌸 Caroline's Flower Journey 🌸</h1>
+      <button id="start-journey-btn" class="button mb-3 w-full">Start Journey 🌸</button>
+      <button id="view-messages-btn" class="button mb-3 w-full">View Messages 💌</button>
+      <button id="credits-btn" class="button w-full">Credits 🌼</button>
+    </div>
+
+    <div id="quest-message" role="alert" aria-live="assertive" class="p-4 rounded-lg shadow-lg bg-white max-w-md mx-auto"></div>
+
+    <div id="credits" role="dialog" aria-modal="true" aria-labelledby="credits-title" class="p-6 rounded-lg shadow-lg bg-white max-w-md mx-auto">
+      <h2 id="credits-title" class="text-2xl font-semibold mb-4 text-green-600">Credits</h2>
+      <p>From Ardian, for my one and only Caroline</p>
+      <button id="close-credits-btn" class="button mt-4 w-full">Close</button>
+    </div>
+
+    <div id="final-surprise" role="dialog" aria-modal="true" aria-labelledby="final-surprise-title" class="p-6 rounded-lg shadow-lg bg-white max-w-md mx-auto">
+      <h2 id="final-surprise-title" class="text-2xl font-semibold mb-4 text-red-600">🎁 Final Surprise 🎁</h2>
+      <p id="final-message" class="mb-4"></p>
+      <button id="close-final-btn" class="button w-full">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Game state and variables
+    const gameState = {
+      currentQuestIndex: -1,
+      quests: [
+        {
+      name: "Garden of Strength",
+      objective: "Tap and collect 5 different tough flowers (like sunflowers standing tall, or daisies in the wind)",
+      targetCount: 5,
+      collected: 0,
+      rewardMessage: "Caroline, through every storm and every sunny day, you’ve stood tall like these flowers.\nEvery hardship you faced... you made it through.\nI am so proud of the strong, beautiful soul you are today.\nCongratulations on everything you've achieved, love. 🌻",
+      type: "tap-collect",
+      objectClass: "flower",
+      positions: [
+        {top: '100px', left: '50px'},
+        {top: '140px', left: '110px'},
+        {top: '100px', left: '170px'},
+        {top: '140px', left: '230px'},
+        {top: '100px', left: '290px'}
+      ],
+      shape: 'flower'
+    },
+        {
+      name: "Petal Path of Patience",
+      objective: "Tap 7 floating flower petals to form a path",
+      targetCount: 7,
+      collected: 0,
+      rewardMessage: "There are times I can’t be by your side — not for every hardship, not for every special moment, not even just to hug you when you need it most. But even across any distance, my heart is always with you. I promise I’ll work hard so one day, we can face everything hand in hand. You are never truly alone, my love. 🌊",
+      type: "tap-collect",
+      objectClass: "flower"
+    },
+        {
+          name: "Dreams in the Sky",
+          objective: "Tap and catch 3 glowing butterflies, each representing one of Caroline’s dreams",
+          targetCount: 3,
+          collected: 0,
+          rewardMessage: "Our dreams float in the sky, just like these butterflies, beautiful and alive.\nI believe in you, in everything you want to achieve, and I’m always here to dream with you.\nCongratulations, my love. You inspire me every day. 🦋",
+          type: "tap-collect",
+          objectClass: "butterfly"
+        },
+        {
+      name: "Meadow of Hopes",
+      objective: "Tap on floating dandelions drifting by",
+      targetCount: 5,
+      collected: 0,
+      rewardMessage: "Sometimes we must leap even when we're scared. You’ve always jumped forward bravely. I admire you so much, Caroline.",
+      type: "tap-collect",
+      objectClass: "flower",
+      positions: [],
+      animateDrift: true
+    },
+        {
+      name: "Bouquet of Love",
+      objective: "Tap to collect 5 different types of flower petals to complete a bouquet",
+      targetCount: 5,
+      collected: 0,
+      rewardMessage: "Piece by piece, petal by petal, you've built a beautiful life. I'm so blessed to be part of your story. Every moment with you is a new blossom in my heart.",
+      type: "tap-collect",
+      objectClass: "flower",
+      positions: [],
+      collectedPetals: [],
+      bouquetShown: false
+    }
+      ],
+      finalMessageShown: false,
+      isPlaying: false,
+      carolinePosition: 50,
+      moveStep: 20,
+      gameObjects: [],
+      touchStartX: null,
+      touchStartY: null,
+      touchStartTime: null,
+      tapTimeout: null
+    };
+
+    // DOM elements
+    const mainMenu = document.getElementById('main-menu');
+    const startJourneyBtn = document.getElementById('start-journey-btn');
+    const viewMessagesBtn = document.getElementById('view-messages-btn');
+    const creditsBtn = document.getElementById('credits-btn');
+    const questMessage = document.getElementById('quest-message');
+    const credits = document.getElementById('credits');
+    const closeCreditsBtn = document.getElementById('close-credits-btn');
+    const finalSurprise = document.getElementById('final-surprise');
+    const finalMessage = document.getElementById('final-message');
+    const closeFinalBtn = document.getElementById('close-final-btn');
+    const gameCanvas = document.getElementById('game-canvas');
+    const caroline = document.getElementById('caroline');
+    const fireworksCanvas = document.getElementById('fireworks');
+    const fireworksCtx = fireworksCanvas.getContext('2d');
+
+    // Utility functions
+    function showElement(el) {
+      el.classList.add('active');
+    }
+    function hideElement(el) {
+      el.classList.remove('active');
+    }
+
+    // Initialize game canvas size for fireworks
+    function resizeCanvas() {
+      fireworksCanvas.width = gameCanvas.clientWidth;
+      fireworksCanvas.height = gameCanvas.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Fireworks animation for final surprise
+    class Firework {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.particles = [];
+        this.createParticles();
+      }
+      createParticles() {
+        for (let i = 0; i < 30; i++) {
+          this.particles.push({
+            x: this.x,
+            y: this.y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            alpha: 1,
+            size: Math.random() * 3 + 2,
+            color: `hsl(${Math.random() * 360}, 70%, 70%)`
+          });
+        }
+      }
+      update() {
+        this.particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.alpha -= 0.02;
+          p.vy += 0.05; // gravity
+        });
+        this.particles = this.particles.filter(p => p.alpha > 0);
+      }
+      draw(ctx) {
+        this.particles.forEach(p => {
+          ctx.fillStyle = `rgba(${hexToRgb(p.color)},${p.alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+      isDone() {
+        return this.particles.length === 0;
+      }
+    }
+
+    function hexToRgb(h) {
+      let r = 0, g = 0, b = 0;
+      if (h.startsWith('hsl')) {
+        // Convert hsl to rgb
+        const hsl = h.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+        if (hsl) {
+          const hVal = parseInt(hsl[1]);
+          const sVal = parseInt(hsl[2]) / 100;
+          const lVal = parseInt(hsl[3]) / 100;
+          const c = (1 - Math.abs(2 * lVal - 1)) * sVal;
+          const x = c * (1 - Math.abs((hVal / 60) % 2 - 1));
+          const m = lVal - c / 2;
+          let r1, g1, b1;
+          if (hVal < 60) [r1, g1, b1] = [c, x, 0];
+          else if (hVal < 120) [r1, g1, b1] = [x, c, 0];
+          else if (hVal < 180) [r1, g1, b1] = [0, c, x];
+          else if (hVal < 240) [r1, g1, b1] = [0, x, c];
+          else if (hVal < 300) [r1, g1, b1] = [x, 0, c];
+          else [r1, g1, b1] = [c, 0, x];
+          r = Math.round((r1 + m) * 255);
+          g = Math.round((g1 + m) * 255);
+          b = Math.round((b1 + m) * 255);
+        }
+      }
+      return `${r},${g},${b}`;
+    }
+
+    let fireworks = [];
+
+    function animateFireworks() {
+      fireworksCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+      fireworks.forEach(fw => {
+        fw.update();
+        fw.draw(fireworksCtx);
+      });
+      fireworks = fireworks.filter(fw => !fw.isDone());
+      if (fireworks.length > 0) {
+        requestAnimationFrame(animateFireworks);
+      }
+    }
+
+    function launchFireworks() {
+      for (let i = 0; i < 5; i++) {
+        fireworks.push(new Firework(Math.random() * fireworksCanvas.width, Math.random() * fireworksCanvas.height / 2));
+      }
+      animateFireworks();
+    }
+
+    // Game functions
+    function startGame() {
+      gameState.currentQuestIndex = 0;
+      gameState.isPlaying = true;
+      gameState.finalMessageShown = false;
+      gameState.carolinePosition = 50;
+      gameState.quests.forEach(q => q.collected = 0);
+      clearGameObjects();
+      hideElement(mainMenu);
+      showQuestMessage();
+      renderCaroline();
+      spawnQuestObjects();
+      // Reset flower positions for Garden of Strength quest
+      if (gameState.quests[0].objectClass === 'flower') {
+        gameState.gameObjects.forEach((obj, index) => {
+          obj.style.top = (100 + (index % 2) * 40) + 'px';
+          obj.style.left = (50 + index * 60) + 'px';
+          obj.style.borderRadius = '50%';
+          obj.style.background = 'radial-gradient(circle at center, #fbb6ce 40%, #f472b6 80%)';
+          obj.style.boxShadow = '0 0 8px #f472b6';
+        });
+      }
+    }
+
+    function clearGameObjects() {
+      gameState.gameObjects.forEach(obj => obj.remove());
+      gameState.gameObjects = [];
+    }
+
+    function showQuestMessage() {
+      const quest = gameState.quests[gameState.currentQuestIndex];
+      questMessage.textContent = `${quest.name}: ${quest.objective}`;
+      questMessage.classList.add('active');
+      setTimeout(() => {
+        questMessage.classList.remove('active');
+      }, 4000);
+    }
+
+    function renderCaroline() {
+      caroline.style.left = gameState.carolinePosition + 'px';
+    }
+
+    function spawnQuestObjects() {
+      clearGameObjects();
+      const quest = gameState.quests[gameState.currentQuestIndex];
+      const gameArea = gameCanvas;
+
+      if (quest.type === 'memory-match') {
+        spawnMemoryMatchCards(quest, gameArea);
+        return;
+      }
+
+      if (quest.name === 'Bouquet of Love') {
+        spawnBouquetPetals(quest, gameArea);
+        return;
+      }
+
+      const objectCount = quest.targetCount;
+      for (let i = 0; i < objectCount; i++) {
+        const obj = document.createElement('div');
+        obj.classList.add(quest.objectClass);
+        obj.style.position = 'absolute';
+        obj.style.bottom = '20px';
+        if (quest.positions && quest.positions[i]) {
+          obj.style.top = quest.positions[i].top;
+          obj.style.left = quest.positions[i].left;
+        } else {
+          obj.style.left = (80 + i * 60) + 'px';
+        }
+        // Apply shape styles if defined
+        if (quest.shape === 'flower') {
+          obj.style.background = 'radial-gradient(circle at center, #fbb6ce 40%, #f472b6 80%)';
+          obj.style.boxShadow = '0 0 8px #f472b6';
+          obj.style.borderRadius = '50%';
+        }
+        obj.setAttribute('tabindex', '0');
+        obj.setAttribute('role', 'button');
+        obj.setAttribute('aria-label', quest.objectClass + ' object');
+        gameArea.appendChild(obj);
+        gameState.gameObjects.push(obj);
+
+        if (quest.type === 'tap-collect') {
+          obj.addEventListener('click', () => {
+            collectObject(obj);
+          });
+        } else if (quest.type === 'swipe-build') {
+          // Swipe build logic placeholder
+          obj.addEventListener('touchstart', handleTouchStart, {passive: true});
+          obj.addEventListener('touchmove', handleTouchMove, {passive: true});
+          obj.addEventListener('touchend', handleTouchEnd, {passive: true});
+        } else if (quest.type === 'swipe-jump') {
+          // Swipe jump logic placeholder
+          obj.addEventListener('touchstart', handleTouchStart, {passive: true});
+          obj.addEventListener('touchmove', handleTouchMove, {passive: true});
+          obj.addEventListener('touchend', handleTouchEnd, {passive: true});
+        }
+        // Animate drifting objects if enabled
+        if (quest.animateDrift) {
+          animateDrift(obj, i);
+        }
+      }
+    }
+
+    // Spawn memory match cards for the memory-match quest
+    function spawnMemoryMatchCards(quest, gameArea) {
+      clearGameObjects();
+      const pairs = quest.targetCount;
+      const cards = [];
+      const cardValues = [];
+
+      // Create pairs of card values
+      for (let i = 0; i < pairs; i++) {
+        cardValues.push(i);
+        cardValues.push(i);
+      }
+
+      // Shuffle card values
+      for (let i = cardValues.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cardValues[i], cardValues[j]] = [cardValues[j], cardValues[i]];
+      }
+
+      // Create card elements
+      cardValues.forEach((value, index) => {
+        const card = document.createElement('div');
+        card.classList.add('memory-card');
+        card.style.position = 'absolute';
+        card.style.width = '60px';
+        card.style.height = '80px';
+        card.style.background = 'linear-gradient(135deg, #fbb6ce, #f472b6)';
+        card.style.borderRadius = '12px';
+        card.style.boxShadow = '0 0 8px #f472b6';
+        card.style.top = '100px';
+        card.style.left = (50 + (index % 3) * 80) + 'px';
+        card.style.cursor = 'pointer';
+        card.dataset.value = value;
+        card.dataset.flipped = 'false';
+        card.textContent = '?';
+        card.style.color = 'white';
+        card.style.fontSize = '36px';
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.justifyContent = 'center';
+        card.style.userSelect = 'none';
+
+        card.addEventListener('click', () => {
+          if (card.dataset.flipped === 'true' || quest.matchedPairs === pairs) return;
+          flipCard(card, quest);
+        });
+
+        gameArea.appendChild(card);
+        cards.push(card);
+      });
+
+      quest.cards = cards;
+      gameState.gameObjects = cards;
+    }
+
+    // Flip a memory card and check for matches
+    let flippedCards = [];
+
+    function flipCard(card, quest) {
+      card.textContent = String.fromCharCode(0x1F33A + parseInt(card.dataset.value)); // flower emoji variants
+      card.dataset.flipped = 'true';
+
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        if (flippedCards[0].dataset.value === flippedCards[1].dataset.value) {
+          // Match found
+          quest.matchedPairs++;
+          flippedCards = [];
+          if (quest.matchedPairs >= quest.targetCount) {
+            showRewardMessage();
+          }
+        } else {
+          // No match, flip back after delay
+          setTimeout(() => {
+            flippedCards.forEach(c => {
+              c.textContent = '?';
+              c.dataset.flipped = 'false';
+            });
+            flippedCards = [];
+          }, 1000);
+        }
+      }
+    }
+
+    // Animate drifting objects (like dandelions)
+    function animateDrift(element, index) {
+      const amplitude = 20;
+      const speed = 0.002 + index * 0.001;
+      let startTime = null;
+
+      function drift(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const x = amplitude * Math.sin(elapsed * speed);
+        element.style.transform = `translateX(${x}px)`;
+        requestAnimationFrame(drift);
+      }
+      requestAnimationFrame(drift);
+    }
+
+    // Spawn bouquet petals for Bouquet of Love quest
+    function spawnBouquetPetals(quest, gameArea) {
+      clearGameObjects();
+      const petals = [];
+      const colors = ['#f9a8d4', '#fde68a', '#93c5fd', '#c4b5fd', '#fef3c7']; // pastel pink, yellow, blue, purple, cream
+      const positions = [
+        {top: '100px', left: '50px'},
+        {top: '140px', left: '110px'},
+        {top: '100px', left: '170px'},
+        {top: '140px', left: '230px'},
+        {top: '100px', left: '290px'}
+      ];
+
+      for (let i = 0; i < quest.targetCount; i++) {
+        const petal = document.createElement('div');
+        petal.classList.add('flower');
+        petal.style.position = 'absolute';
+        petal.style.top = positions[i].top;
+        petal.style.left = positions[i].left;
+        petal.style.width = '40px';
+        petal.style.height = '40px';
+        petal.style.borderRadius = '50%';
+        petal.style.background = colors[i];
+        petal.style.boxShadow = `0 0 8px ${colors[i]}`;
+        petal.style.cursor = 'pointer';
+        petal.setAttribute('tabindex', '0');
+        petal.setAttribute('role', 'button');
+        petal.setAttribute('aria-label', 'flower petal');
+        gameArea.appendChild(petal);
+        petals.push(petal);
+
+        petal.addEventListener('click', () => {
+          if (!quest.collectedPetals.includes(i)) {
+            quest.collectedPetals.push(i);
+            petal.style.opacity = '0.5';
+            updateBouquetDisplay(quest, gameArea);
+            if (quest.collectedPetals.length >= quest.targetCount && !quest.bouquetShown) {
+              quest.bouquetShown = true;
+              showRewardMessage();
+              showBouquet(gameArea);
+            }
+          }
+        });
+      }
+      quest.petals = petals;
+      gameState.gameObjects = petals;
+    }
+
+    // Show bouquet animation
+    function showBouquet(gameArea) {
+      const bouquet = document.createElement('div');
+      bouquet.id = 'bouquet';
+      bouquet.style.position = 'absolute';
+      bouquet.style.bottom = '20px';
+      bouquet.style.left = '50%';
+      bouquet.style.transform = 'translateX(-50%)';
+      bouquet.style.width = '120px';
+      bouquet.style.height = '120px';
+      bouquet.style.background = 'radial-gradient(circle at center, #f9a8d4, #f472b6)';
+      bouquet.style.borderRadius = '50%';
+      bouquet.style.boxShadow = '0 0 15px #f472b6';
+      bouquet.style.display = 'flex';
+      bouquet.style.alignItems = 'center';
+      bouquet.style.justifyContent = 'center';
+      bouquet.style.fontSize = '48px';
+      bouquet.style.color = 'white';
+      bouquet.style.userSelect = 'none';
+      bouquet.textContent = '💐';
+      gameArea.appendChild(bouquet);
+      setTimeout(() => {
+        bouquet.remove();
+      }, 5000);
+    }
+
+    // Update bouquet display (optional, can be used to show collected petals in a mini bouquet)
+    function updateBouquetDisplay(quest, gameArea) {
+      // This can be implemented to visually arrange collected petals into a bouquet
+      // For simplicity, this is left as a placeholder
+    }
+
+    function collectObject(obj) {
+      obj.remove();
+      gameState.quests[gameState.currentQuestIndex].collected++;
+      if (gameState.quests[gameState.currentQuestIndex].collected >= gameState.quests[gameState.currentQuestIndex].targetCount) {
+        showRewardMessage();
+      }
+    }
+
+    function showRewardMessage() {
+      const quest = gameState.quests[gameState.currentQuestIndex];
+      questMessage.textContent = quest.rewardMessage;
+      questMessage.classList.add('active');
+      setTimeout(() => {
+        questMessage.classList.remove('active');
+        nextQuest();
+      }, 5000);
+    }
+
+    function nextQuest() {
+      gameState.currentQuestIndex++;
+      if (gameState.currentQuestIndex >= gameState.quests.length) {
+        showFinalSurprise();
+      } else {
+        showQuestMessage();
+        spawnQuestObjects();
+      }
+    }
+
+    function showFinalSurprise() {
+      gameState.isPlaying = false;
+      gameState.finalMessageShown = true;
+      finalMessage.textContent = "Happy 25th Birthday, my dearest Caroline.\nYou've grown into someone so amazing — strong, kind, and full of dreams.\nEvery step you’ve taken, even the hard ones, has led you here, to a future full of hope.\nThank you for letting me be part of your story.\nI love you, and I’m so proud of the woman you are today. ❤️🌸";
+      showElement(finalSurprise);
+      launchFireworks();
+    }
+
+    // Event listeners for main menu buttons
+    startJourneyBtn.addEventListener('click', () => {
+      startGame();
+    });
+
+    viewMessagesBtn.addEventListener('click', () => {
+      alert("I'm sorry if the objects do not match the instructions. There are many bugs and I don't know how to fix them.");
+    });
+
+    creditsBtn.addEventListener('click', () => {
+      showElement(credits);
+    });
+
+    closeCreditsBtn.addEventListener('click', () => {
+      hideElement(credits);
+    });
+
+    closeFinalBtn.addEventListener('click', () => {
+      hideElement(finalSurprise);
+      showElement(mainMenu);
+    });
+
+    // Touch controls for moving Caroline
+    gameCanvas.addEventListener('touchstart', (e) => {
+      if (!gameState.isPlaying) return;
+      const touch = e.touches[0];
+      gameState.touchStartX = touch.clientX;
+      gameState.touchStartY = touch.clientY;
+      gameState.touchStartTime = Date.now();
+      gameState.tapTimeout = setTimeout(() => {
+        gameState.tapTimeout = null;
+      }, 300);
+    }, {passive: true});
+
+    gameCanvas.addEventListener('touchend', (e) => {
+      if (!gameState.isPlaying) return;
+      if (gameState.tapTimeout) {
+        clearTimeout(gameState.tapTimeout);
+        gameState.tapTimeout = null;
+        // Tap detected
+        const touch = e.changedTouches[0];
+        const x = touch.clientX;
+        const width = gameCanvas.clientWidth;
+        if (x < width / 2) {
+          // Move left
+          gameState.carolinePosition = Math.max(0, gameState.carolinePosition - gameState.moveStep);
+        } else {
+          // Move right
+          gameState.carolinePosition = Math.min(gameCanvas.clientWidth - caroline.clientWidth, gameState.carolinePosition + gameState.moveStep);
+        }
+        renderCaroline();
+      }
+    }, {passive: true});
+
+    // Swipe detection variables
+    let swipeStartX = null;
+    let swipeStartY = null;
+    let swipeStartTime = null;
+
+    function handleTouchStart(e) {
+      if (e.touches.length === 1) {
+        swipeStartX = e.touches[0].clientX;
+        swipeStartY = e.touches[0].clientY;
+        swipeStartTime = Date.now();
+      }
+    }
+
+    function handleTouchMove(e) {
+      // Prevent scrolling while swiping in game
+      e.preventDefault();
+    }
+
+    function handleTouchEnd(e) {
+      if (!swipeStartX || !swipeStartY) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - swipeStartX;
+      const dy = touch.clientY - swipeStartY;
+      const dt = Date.now() - swipeStartTime;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      const minSwipeDistance = 30;
+      const maxSwipeTime = 500;
+
+      if (dt < maxSwipeTime) {
+        if (absDy > absDx && dy < -minSwipeDistance) {
+          // Swipe up detected
+          if (gameState.currentQuestIndex >= 0) {
+            const quest = gameState.quests[gameState.currentQuestIndex];
+            if (quest.type === 'swipe-jump') {
+              // Count jump as collected
+              quest.collected++;
+              if (quest.collected >= quest.targetCount) {
+                showRewardMessage();
+              } else {
+                questMessage.textContent = `${quest.name}: ${quest.objective} (${quest.collected}/${quest.targetCount})`;
+              }
+              // Animate Caroline jump
+              caroline.style.transition = 'bottom 0.3s ease';
+              caroline.style.bottom = '100px';
+              setTimeout(() => {
+                caroline.style.bottom = '20px';
+              }, 300);
+            }
+          }
+        }
+      }
+      swipeStartX = null;
+      swipeStartY = null;
+      swipeStartTime = null;
+    }
+
+  </script>
+</body>
+</html>
